@@ -1,0 +1,4 @@
+#pragma once
+
+
+#define MOV_INSTRUCTION_OPCODE 0b10001000
