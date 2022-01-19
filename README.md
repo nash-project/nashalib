@@ -1,2 +1,2 @@
 # nashalib
-Nash Assembly Library
+Nash Assembler Library
