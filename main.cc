@@ -218,44 +218,38 @@ inline unsigned char mov_number_in2_reg_opcode(registers reg){
     return 0;
 }
 
-struct instruction *mov(options fo, registers f, options so, registers s){
+struct instruction *mov(registers f, registers s){
 
     struct instruction *instruction = (struct instruction*)malloc(sizeof(struct instruction));
 
     unsigned char opcode; 
     int reg_size; 
 
-    if (so == options::reg){
 
-        opcode = MOV_INSTRUCTION_OPCODE;
+    opcode = MOV_INSTRUCTION_OPCODE;
 
-        reg_size = register_bit_size(f);
+    reg_size = register_bit_size(f);
 
-        if(reg_size == REGISTER_BIT32_SIZE){
-            opcode =  set_bit(opcode, 0); // set s bit
-        }
-        else if(reg_size == REGISTER_BIT16_SIZE){
-            opcode =  set_bit(opcode, 0); // set s bit
-
-            instruction->instruction[instruction->len++] = 0x66;
-        }
-
-        instruction->instruction[instruction->len++] = opcode;
-
-        unsigned char f_reg =      get_register_code(f);
-        unsigned char s_reg =      get_register_code((registers)s);
-
-        unsigned char modrm = cat_binary(MOD11, s_reg, 3, 2);
-
-        modrm = cat_binary(modrm, f_reg, 3, 5);
-
-        instruction->instruction[instruction->len++] = modrm;
+    if(reg_size == REGISTER_BIT32_SIZE){
+        opcode =  set_bit(opcode, 0); // set s bit
     }
-    else if(so == options::number){
-        //opcode = mov_number_in2_reg_opcode(f);
-        //reg_size = register_bit_size(f);
-        //if ()
+    else if(reg_size == REGISTER_BIT16_SIZE){
+        opcode =  set_bit(opcode, 0); // set s bit
+
+        instruction->instruction[instruction->len++] = 0x66;
     }
+
+    instruction->instruction[instruction->len++] = opcode;
+
+    unsigned char f_reg =      get_register_code(f);
+    unsigned char s_reg =      get_register_code((registers)s);
+
+    unsigned char modrm = cat_binary(MOD11, s_reg, 3, 2);
+
+    modrm = cat_binary(modrm, f_reg, 3, 5);
+
+    instruction->instruction[instruction->len++] = modrm;
+    
 
     return instruction;
 }
@@ -275,7 +269,7 @@ int main(){
 
         std::cout << "Time elapsed: " << t.elapsed_nanoseconds() << " nanoseconds\n";
     }*/
-    struct instruction* i = mov(options::reg, registers::ECX, options::reg, registers::EAX);
+    struct instruction* i = mov( registers::ECX, registers::EAX);
 
     print_instruction(i);
 
@@ -285,13 +279,13 @@ int main(){
 
     //printf("%x %x\n",j);
 
-    unsigned char* c = chunk_uint16_ct_little_endian(0x2233);
+    /*unsigned char* c = chunk_uint16_ct_little_endian(0x2233);
 
     for(int t = 0; t <= 2; t++){
         printf("%x ", c[t]);
     }
 
-    printf("\n");
+    printf("\n");*/
 
     //binary(j);
 
