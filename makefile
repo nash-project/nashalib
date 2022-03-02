@@ -1,17 +1,23 @@
 CPP=clang++
+#CC=clang
 SRC=./src
 
-INCLUDES=-I./include
+INCLUDES=-I$(SRC)/include
 
 CPPFLAGS=-Wall -Wextra $(INCLUDES) -g3 -std=c++17
+#CCFLAGS=-Wall -Wextra $(INCLUDES) -g3
 LDFLAGS=
 
 
 TARGET=nasha
 BUILDDIR=bin
 
-CSOURCES=$(shell find $(SRC) -name '*.cc')
-OBJECTS = $(patsubst $(SRC)/%.cc, $(BUILDDIR)/%.o, $(CSOURCES))
+CPPSOURCES=$(shell find $(SRC) -name '*.cc')
+OBJECTS = $(patsubst $(SRC)/%.cc, $(BUILDDIR)/%.o, $(CPPSOURCES))
+
+#CSOURCES = $(shell find $(SRC) -name '*.c')
+#OBJECTS += $(patsubst $(SRC)/%.c, $(BUILDDIR)/%.o, $(CSOURCES))
+
 
 .PHONY: all build clean run dirs
 
@@ -21,10 +27,14 @@ all: build
 build: dirs $(OBJECTS) $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CPP) $(OBJECTS) $(CPPFLAGS) $(LDFLAGS)  main.cc -o $(TARGET)
+	$(CPP) $(OBJECTS) $(CPPFLAGS) $(LDFLAGS) -o $(TARGET)
 
 $(BUILDDIR)/%.o: $(SRC)/%.cc
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
+
+#$(BUILDDIR)/%.o: $(SRC)/%.c
+#	$(CC) $(CCFLAGS) -c -o $@ $<
+
 
 clean:
 	-@rm -rf $(OBJECTS) $(TARGET) $(BUILDDIR)
@@ -39,5 +49,5 @@ dirs:
 run: build
 	./$(TARGET)
 
-d:
-	objdump -D -Mintel,i386 -b binary -m i386 ./asm
+disa:
+	objdump -Mintel,i386 -b binary -m i386 -D temp.out
