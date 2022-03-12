@@ -10,7 +10,8 @@ enum inst_operand_type{
 	INST_OPERAND_TYPE_REG = 0,
 	INST_OPERAND_TYPE_SREG,
 	INST_OPERAND_TYPE_IMM,
-	INST_OPERAND_TYPE_MEM
+	INST_OPERAND_TYPE_MEM,
+    INST_OPERAND_TYPE_SCALE,
 };
 /**
  * an instruction operand
@@ -21,6 +22,7 @@ struct inst_operand{
 	enum inst_operand_type type;
 	unsigned int size;
     bool reg; // used to check if operand is memory ref to address or register
+    unsigned char sib_byte;
 }__attribute__((packed));
 /**
  * an instruction
@@ -68,7 +70,6 @@ extern "C" struct inst_operand* create_imm(int, int);
  * @param instruction a pointer to the instruction
  */
 extern "C" void free_instruction(struct inst*);
-/**
- * finds the opcode for a instruction
- * @param instruction a pointer to an instruction
- */
+
+
+extern "C" struct inst_operand* create_scale_reg(struct inst_operand*, registers, unsigned char);

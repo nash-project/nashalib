@@ -27,17 +27,19 @@ all: build
 build: dirs $(OBJECTS) $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CPP) $(OBJECTS) $(CPPFLAGS) $(LDFLAGS) -o $(TARGET)
+
+	@$(CPP) $(OBJECTS) $(CPPFLAGS) $(LDFLAGS) -o $(TARGET)
 
 $(BUILDDIR)/%.o: $(SRC)/%.cc
-	$(CPP) $(CPPFLAGS) -c -o $@ $<
+	@echo "[$(CPP)]===>[$<]->[$@]"
+	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 #$(BUILDDIR)/%.o: $(SRC)/%.c
 #	$(CC) $(CCFLAGS) -c -o $@ $<
 
 
 clean:
-	-@rm -rf $(OBJECTS) $(TARGET) $(BUILDDIR)
+	-@rm -rf $(OBJECTS) $(TARGET) $(BUILDDIR) temp.out
 
 dirs:
 	@mkdir -p $(BUILDDIR)

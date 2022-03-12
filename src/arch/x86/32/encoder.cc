@@ -16,16 +16,12 @@ struct modrm{
 static int find_opcode(struct inst* inst_){
     bool all_operands_valid = false;
     for (int i = 0; i < OPCODE_TABLE_SIZE; i++){
-
         if (opcode_table[i].mnemonic != inst_->mnemonic){
             continue;
         }
-
         if (opcode_table[i].Noperands != inst_->Noperands){
-            //printf("Not equal operands\n");
             continue;
         }
-
         for (int ii = 0; ii <= inst_->Noperands; ii++){
             if ( (inst_->operands[ii].size == opcode_table[i].operands[ii].size) &&
                     (inst_->operands[ii].type == opcode_table[i].operands[ii].type)){
@@ -35,8 +31,8 @@ static int find_opcode(struct inst* inst_){
                         all_operands_valid = true;
                     }
                     else{
-                        //printf("invalid literal value\n");
                         all_operands_valid = false;
+                        //printf("Incorrect operand value %d\n", ii);
                         break;
                     }
                 }else{
@@ -44,8 +40,8 @@ static int find_opcode(struct inst* inst_){
                 }
             }
             else{
-                //printf("invalid size or type\n");
                 all_operands_valid = false;
+                //printf("Incorrent operand size %d\n", ii);
                 break;
             }
         }
@@ -70,9 +66,12 @@ static inline void add_reg_2_modrm(int opcode_index, struct inst_operand* operan
             break;
         default:
             break;
-
     }
     
+}
+
+static inline void set_rm_in_modrm(struct modrm *modrm_, unsigned char rm){
+    modrm_->rm = rm;
 }
 
 static inline bool add_rm_2_modrm(int opcode_index, struct modrm * _modrm, struct inst_operand* operand, int i, int *imm_offset_){
@@ -98,6 +97,9 @@ static inline bool add_rm_2_modrm(int opcode_index, struct modrm * _modrm, struc
             _modrm->rm = registers_table[operand->value].reg;
             return true;
             break;
+        default:
+            return false;
+            break;
     }
 }
 
@@ -108,6 +110,11 @@ void x86_32_Encoder::encode(struct inst* inst_){
     struct modrm modrm_  = {0};
     unsigned char modrm_byte = 0;
     int modrm_index = 0;
+    bool skip_rm = false; 
+
+    bool needs_sib = false;
+    unsigned char sib_byte;
+
 
     int operand_offset_of_imm = -1;
 
@@ -130,11 +137,20 @@ void x86_32_Encoder::encode(struct inst* inst_){
         }
 
         if (opcode_table[opcode_index].operands[i].use_literal_value);
+        else if(inst_->operands[i].type == INST_OPERAND_TYPE_SCALE){
+            needs_sib = true;
+            sib_byte = inst_->operands[i].sib_byte;
+            set_rm_in_modrm(&modrm_,0b100);
+            modrm_index++;
+            skip_rm = true;
+        }
         else{
             if (opcode_table[opcode_index].which_does_rm_field_point_to == 0){
                 if (modrm_index == 0) {
-                    if (add_rm_2_modrm(opcode_index, &modrm_, &inst_->operands[i], i, &operand_offset_of_imm))
-                        modrm_index++;
+                    if (skip_rm){
+                        if (add_rm_2_modrm(opcode_index, &modrm_, &inst_->operands[i], i, &operand_offset_of_imm))
+                            modrm_index++;
+                    }
                 }
                 else if (modrm_index == 1){
                     add_reg_2_modrm(opcode_index, &inst_->operands[i], &modrm_, &operand_offset_of_imm, i);
@@ -144,8 +160,10 @@ void x86_32_Encoder::encode(struct inst* inst_){
             else{
 
                 if (modrm_index == 1){
-                    if (add_rm_2_modrm(opcode_index, &modrm_, &inst_->operands[i], i, &operand_offset_of_imm))
-                        modrm_index++;
+                    if (skip_rm){
+                        if (add_rm_2_modrm(opcode_index, &modrm_, &inst_->operands[i], i, &operand_offset_of_imm))
+                            modrm_index++;
+                    }
                 }
                 else if (modrm_index == 0){
                     add_reg_2_modrm(opcode_index, &inst_->operands[i], &modrm_, &operand_offset_of_imm, i);
@@ -162,6 +180,10 @@ void x86_32_Encoder::encode(struct inst* inst_){
 
     if (modrm_index != 0){
         add_byte(modrm_byte);
+    }
+
+    if (needs_sib){
+        add_byte(sib_byte);
     }
 
     if (operand_offset_of_imm != -1){

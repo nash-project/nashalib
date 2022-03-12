@@ -2,7 +2,7 @@
 #include <instruction.hpp>
 
 
-#define OPCODE_TABLE_SIZE 4
+#define OPCODE_TABLE_SIZE 5
 
 
 struct opcode_info_operand_entry{
