@@ -1,6 +1,8 @@
 #pragma once
 
-
+/**
+ * All supported registers by the assembler
+ */
 enum class registers{
 	// 8 bit registers
 	al = 0,
@@ -55,7 +57,9 @@ enum class registers{
 };
 
 
-
+/**
+ * register info that is used for encoding
+ */
 struct register_info{
     unsigned char reg: 3;
     unsigned int size;

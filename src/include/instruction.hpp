@@ -2,10 +2,14 @@
 #include <mnemonic.hpp>
 #include <registers.hpp>
 
+/**
+ * the number of different type of operand types.
+ */
+#define OPERAND_TYPE_COUNT 5
 
-#define OPERAND_TYPE_COUNT 4
-
-
+/**
+ *  All the operand types 
+ */
 enum inst_operand_type{
 	INST_OPERAND_TYPE_REG = 0,
 	INST_OPERAND_TYPE_SREG,
@@ -44,26 +48,30 @@ struct inst{
  * @param operand the operand you want to add to the instruction
  */
 extern "C" void new_operand(struct inst*, struct inst_operand*);
+
 /**
  * creates a memory reference operand
  * @param address this is the address of the memory
  */
 extern "C" struct inst_operand* create_mem(int);
+
 /**
  * creates memory reference of register operand
  * @param register a register
  */
 extern "C" struct inst_operand* create_mem_reg(registers);
+
 /**
  * creates register operand
  * @param register a register
  */
 extern "C" struct inst_operand* create_reg(registers);
-/**
- * creates a immediate operand
- * @param number the number that the immediate will be
- * @param size size of the number
- */
+
+/** 
+ * creates new operand with a type of immediate
+ * @param immediate the integer value of the immediate
+ * @param size the size of the immediate in bytes.
+ * */
 extern "C" struct inst_operand* create_imm(int, int);
 /**
  * frees up all the memory that the instruct used
@@ -71,5 +79,7 @@ extern "C" struct inst_operand* create_imm(int, int);
  */
 extern "C" void free_instruction(struct inst*);
 
-
+/**
+* creates new operand object that 
+*/
 extern "C" struct inst_operand* create_scale_reg(struct inst_operand*, registers, unsigned char);
