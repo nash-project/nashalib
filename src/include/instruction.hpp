@@ -1,9 +1,17 @@
 #pragma once
 #include <mnemonic.hpp>
 #include <registers.hpp>
+#include <vector>
+
+
+struct sib_byte{
+    unsigned char base: 3;
+    unsigned char index: 3;
+    unsigned char scale: 2;
+}__attribute__((packed));
 
 /**
- * the number of different type of operand types.
+ * the number of different operand types.
  */
 #define OPERAND_TYPE_COUNT 5
 
@@ -17,6 +25,14 @@ enum inst_operand_type{
 	INST_OPERAND_TYPE_MEM,
     INST_OPERAND_TYPE_SCALE,
 };
+
+struct sib_info{
+    unsigned char mod: 2;
+    struct sib_byte sib_byte;
+    struct inst_operand * base;
+    int size;
+}__attribute__((packed));
+
 /**
  * an instruction operand
  * 
@@ -26,7 +42,7 @@ struct inst_operand{
 	enum inst_operand_type type;
 	unsigned int size;
     bool reg; // used to check if operand is memory ref to address or register
-    unsigned char sib_byte;
+    struct sib_info sib_info;
 }__attribute__((packed));
 /**
  * an instruction
@@ -35,8 +51,7 @@ struct inst_operand{
 struct inst{
     mnemonic mnemonic;
 	int Noperands;
-	struct inst_operand operands[3];
-	int Nprefixs;
+	std::vector<struct inst_operand*> operands; 
 	unsigned char prefixes[2];
 }__attribute__((packed));
 

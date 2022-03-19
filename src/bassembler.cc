@@ -22,20 +22,30 @@ void BEncoder::add_short(int number, int endianess){
     //printf("[%04x]", cnumber);
 }
 
-void BEncoder::add_imm(struct inst_operand *operand, int endianess){
+void BEncoder::add_imm(int value, int size, int endianess){
     (void)endianess;
-    if (operand->type != INST_OPERAND_TYPE_IMM){
-        return;
-    }
-    switch (operand->size){
+
+    switch (size){
         case 32:
-            add_int(operand->value, endianess);
+            add_int(value, endianess);
             break;
         case 16:
-            add_short(operand->value, endianess);
+            add_short(value, endianess);
             break;
         case 8:
-            add_byte(operand->value);
+            add_byte(value);
             break;
     }
+}
+
+void BEncoder::add_label(std::string label){
+    labels.insert({label, cpos});
+}
+
+int BEncoder::get_label(std::string label){
+    return labels[label];
+}
+
+int BEncoder::get_cpos(){
+    return cpos;
 }

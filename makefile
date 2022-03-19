@@ -39,7 +39,7 @@ $(BUILDDIR)/%.o: $(SRC)/%.cc
 
 
 clean:
-	-@rm -rf $(OBJECTS) $(TARGET) $(BUILDDIR) temp.out
+	-@rm -rf $(OBJECTS) $(TARGET) $(BUILDDIR) temp.out docs
 
 dirs:
 	@mkdir -p $(BUILDDIR)
@@ -51,5 +51,7 @@ dirs:
 run: build
 	./$(TARGET)
 
-disa:
+disa: run
 	objdump -Mintel,i386 -b binary -m i386 -D temp.out
+build-docs:
+	doxygen

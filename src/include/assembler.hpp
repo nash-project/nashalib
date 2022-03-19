@@ -17,6 +17,10 @@ namespace assembler{
 			void freeInstruction(struct inst*);
 			struct inst * mInstruction(mnemonic, struct inst_operand* op0 = NULL, 
 										struct inst_operand *op1 = NULL, struct inst_operand* op2 = NULL);
+		
+		int label_as_relative(std::string);
+		int get_label(std::string);
+		void add_label(std::string);
 		private:
 			FILE* ofile;
 	};

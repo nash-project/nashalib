@@ -4,16 +4,9 @@
 #include <iostream>
 
 
-struct sib_byte{
-	unsigned char base: 3;
-	unsigned char index: 3;
-	unsigned char scale: 2;
-}__attribute__((packed)); // changed here
 
 extern "C" void new_operand(struct inst *i, struct inst_operand *operand){
-	memcpy((void*)&i->operands[i->Noperands], (void*)operand, sizeof(struct inst_operand));
-    free(operand);
-	i->Noperands++;
+	i->operands.push_back(operand);
 }
 
 extern "C" struct inst_operand* create_reg(enum registers reg){
@@ -57,32 +50,49 @@ extern "C" struct inst_operand* create_imm(int imm, int size){
 	return op;
 }
 extern "C" void free_instruction(struct inst* inst_){
+	for (int x = 0; x < inst_->operands.size(); x++){
+
+		if (inst_->operands[x]->type == INST_OPERAND_TYPE_SCALE){
+
+			if (inst_->operands[x]->sib_info.base->type == INST_OPERAND_TYPE_IMM){
+				free(inst_->operands[x]->sib_info.base);
+			}
+			free(inst_->operands[x]);
+		}
+	}
     free(inst_);
 }
 
 extern "C" struct inst_operand* create_scale_reg(struct inst_operand* base, registers index, unsigned char scale){
+
 	struct inst_operand *op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
-	struct sib_byte sb;
 	op->type = INST_OPERAND_TYPE_SCALE;
-	op->size = base->size;
+	op->size = registers_table[(int)index].size;
+	op->sib_info.base = base;
+	op->sib_info.sib_byte.index = registers_table[(int)index].reg;
+
 	switch (scale){
 		case 1:
-			sb.scale = 0b00;
+			op->sib_info.sib_byte.scale = 0b00;
 			break;
 		case 2:
-			sb.scale = 0b01;
+			op->sib_info.sib_byte.scale = 0b01;
 			break;
 		case 4:
-			sb.scale = 0b10;
+			op->sib_info.sib_byte.scale = 0b10;
 			break;
 		case 8:
-			sb.scale = 0b11;
+			op->sib_info.sib_byte.scale = 0b11;
 			break;
 		default:
 			return NULL;
 			break;
 	}
-	sb.index = registers_table[(int)index].reg;
+
+
+
+
+	/*
 	switch (base->type){
 		case INST_OPERAND_TYPE_REG:
 			sb.base = registers_table[(int)base->value].reg;
@@ -96,6 +106,6 @@ extern "C" struct inst_operand* create_scale_reg(struct inst_operand* base, regi
 			return NULL;
 			break;
 	}
-	op->sib_byte = *(unsigned char*)&sb;
+	op->sib_byte = *(unsigned char*)&sb;*/
 	return op;
 }

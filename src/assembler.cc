@@ -42,4 +42,15 @@ namespace assembler{
 		}
 		free_instruction(instruction);
 	}
+
+	int Assembler::label_as_relative(std::string label){
+		return (encoder->get_cpos() - encoder->get_label(label));
+	}
+	int Assembler::get_label(std::string label){
+		return encoder->get_label(label);
+	}
+
+	void Assembler::add_label(std::string label){
+		encoder->add_label(label);
+	}
 };

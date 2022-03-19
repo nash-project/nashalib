@@ -20,7 +20,10 @@ public:
 	void add_byte(unsigned char);
 	void add_int(int, int);
 	void add_short(int, int);
-	void add_imm(struct inst_operand*, int);
+	void add_imm(int,int, int);
+	void add_label(std::string);
+	int get_cpos();
+	int get_label(std::string);
 	
 protected:
 	int cpos;
