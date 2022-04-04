@@ -2,11 +2,11 @@ CPP=clang++
 #CC=clang
 SRC=./src
 
-INCLUDES=-I$(SRC)/include
+INCLUDES=-I$(SRC)/include -I./seegul/include/
 
 CPPFLAGS=-Wall -Wextra $(INCLUDES) -g3 -std=c++17
 #CCFLAGS=-Wall -Wextra $(INCLUDES) -g3
-LDFLAGS=
+LDFLAGS=-L./seegul/ -l:seegul.a 
 
 
 TARGET=nasha
@@ -24,7 +24,7 @@ OBJECTS = $(patsubst $(SRC)/%.cc, $(BUILDDIR)/%.o, $(CPPSOURCES))
 
 all: build
 
-build: dirs $(OBJECTS) $(TARGET)
+build: dirs $(OBJECTS) compile-libs $(TARGET)
 
 $(TARGET): $(OBJECTS)
 
@@ -55,3 +55,6 @@ disa: run
 	objdump -Mintel,i386 -b binary -m i386 -D temp.out
 build-docs:
 	doxygen
+
+compile-libs:
+	cd seegul && make build-lib

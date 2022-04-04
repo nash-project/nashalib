@@ -2,11 +2,25 @@
 #include <registers.hpp>
 #include <stdlib.h>
 #include <iostream>
+#include <settings.hpp>
+#include <Data.hpp>
 
 
 int main(){
 
-    assembler::Assembler *assembler = new assembler::Assembler(assembler::architecture::x86, 32);
+    int data = 1;
+
+    assembler::Assembler *assembler = new assembler::Assembler(architecture::x86, 32, format::elf32);
+
+    Data *_data = new Data((unsigned char*)&data, sizeof(int), global_label, "_msg");
+
+
+    assembler->add_label("_start", global_label);
+
+
+    assembler->new_data(_data);
+
+
 
     struct inst_operand * op1 = create_scale_reg(create_reg(registers::ecx), registers::ebx, 2);
 
@@ -60,6 +74,9 @@ int main(){
 
     assembler->freeInstruction(instruction);
 
+    assembler->write("output.o");
+
+    delete assembler;
 
     // ======================================================
     std::cout << "Raw flat binary output: temp.out\n";

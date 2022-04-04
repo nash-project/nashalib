@@ -3,14 +3,13 @@
 
 
 
-
 namespace assembler{
-	Assembler::Assembler(architecture arch, int bsz){
+	Assembler::Assembler(architecture arch, int bsz, format f){
 
 		ofile = fopen("temp.out", "wb");
 
 		if (arch == architecture::x86 && bsz == 32){
-			encoder = new x86_32_Encoder(ofile);
+			encoder = new x86_32_Encoder(ofile, f);
 		}
 	}
 	void Assembler::encode(struct inst* instruction){
@@ -50,7 +49,17 @@ namespace assembler{
 		return encoder->get_label(label);
 	}
 
-	void Assembler::add_label(std::string label){
-		encoder->add_label(label);
+	void Assembler::add_label(std::string label, int vis){
+		encoder->add_label(label, vis, section::_text);
+	}
+
+	void Assembler::write(std::string name){
+		fclose(ofile);
+		encoder->gen_bin(name);
+	}
+
+	void Assembler::new_data(Data* data){
+		encoder->add_label(data->label, data->vis, section::_data);
+		encoder->add_data(data);
 	}
 };

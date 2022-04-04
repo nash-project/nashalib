@@ -6,6 +6,12 @@
 #include <registers.hpp>
 #include <arch/x86/32/opcodes.hpp>
 #include <endianess.hpp>
+#include <seegul/seegul.h>
+#include <fstream>
+#include <iostream>
+#include <settings.hpp>
+
+
 
 struct modrm{
     unsigned char rm: 3;
@@ -264,3 +270,176 @@ void x86_32_Encoder::encode(struct inst* inst_){
     }
 }
 
+void x86_32_Encoder::gen_elf32(std::string name){
+
+    Elf32_Sym *csym;
+    Elf32 * elf = new Elf32();
+    std::fstream tfile("temp.out", std::ios::in | std::ios::binary);
+    if (!tfile.is_open()) return;
+    std::vector<char> instructions(std::istreambuf_iterator<char>{tfile}, std::istreambuf_iterator<char>{});
+    struct Elf32_section * shstrtab_section;
+    struct Elf32_section * text_section;
+    struct Elf32_section * strtab_section;
+    struct Elf32_section * symtab_section;
+    struct Elf32_section * data_section;
+    struct Elf32_section * rel_text_section;
+    SymTab32 * symbol_table = new SymTab32();
+    StrTab32 * strtab = new StrTab32();
+    StrTab32 * shstrtab = new StrTab32();
+    RelTab32 * rel_tab = new RelTab32();
+
+    elf->new_section(); // NULL
+    text_section = elf->new_section(); // .text
+    shstrtab_section = elf->new_section(); // .shstrtab
+    symtab_section = elf->new_section(); // .symtab
+    strtab_section = elf->new_section(); // .strtab
+    data_section = elf->new_section(); // .data
+    rel_text_section = elf->new_section(); // .rel.text
+
+    elf->eheader->e_shstrndx = shstrtab_section->index;
+// .shstrtab
+// ===============================================
+    shstrtab->new_string(".shstrtab");
+    shstrtab->new_string(".text");
+    shstrtab->new_string(".strtab");
+    shstrtab->new_string(".symtab");
+    shstrtab->new_string(".data");
+    shstrtab->new_string(".rel.text");
+    
+// ===============================================
+// .text
+    text_section->data = (void*)instructions.data();
+    text_section->data_sz = instructions.size();
+    text_section->section->sh_name = shstrtab->get_string(".text");
+    text_section->section->sh_type = SHT_PROGBITS;
+    text_section->section->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+    text_section->section->sh_addralign = 4;
+
+
+
+    int size_of__data_data = 0;
+    int _data_data_index = 0;
+
+    for ( Data* data_ : data){
+        size_of__data_data += data_->size;
+    }
+
+    unsigned char * _data_data = (unsigned char*)malloc(size_of__data_data);
+
+    for (Data* data_ : data){
+        for (int y = 0; y < data_->size; y++){
+            _data_data[_data_data_index] = data_->data[y];
+            _data_data_index++;
+        }
+    }
+
+    data_section->data = (void*)_data_data;
+    data_section->data_sz = size_of__data_data;
+    data_section->section->sh_name = shstrtab->get_string(".data");
+    data_section->section->sh_type = SHT_PROGBITS;
+    data_section->section->sh_flags = SHF_ALLOC | SHF_WRITE;
+    data_section->section->sh_addralign = 4;
+
+// .strtab
+    strtab->new_string("temp.nash");
+
+    
+// .symtab
+
+    bool set_symtab_loc_idx = false;
+    int symtab_idx = 0;
+
+    symtab_section->section->sh_name = shstrtab->get_string(".symtab");
+    symtab_section->section->sh_link = strtab_section->index;
+
+    symbol_table->new_symbol(0, 0, SHN_UNDEF);
+    symtab_idx++;
+
+    symbol_table->new_symbol(strtab->get_string("temp.nash"), ELF32_ST_INFO(STB_LOCAL, STT_FILE), SHN_ABS);
+    symtab_idx++;
+    
+    symbol_table->new_symbol(0, ELF32_ST_INFO(STB_LOCAL, STT_SECTION), text_section->index);
+    symtab_idx++;
+
+    auto label_iter = labels.begin();
+    while (label_iter != labels.end()) {
+    
+        strtab->new_string(label_iter->first); // add the label name to strtab
+
+        if (label_iter->second->visibility == local_label){
+            if (label_iter->second->_section == section::_text){
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_LOCAL, STT_NOTYPE), text_section->index);
+                csym->st_value = label_iter->second->offset;
+            }
+            else if(label_iter->second->_section == section::_data){
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_LOCAL, STT_NOTYPE), data_section->index);
+                csym->st_value = label_iter->second->offset;
+            }
+        }
+        else{
+            if (label_iter->second->_section == section::_text){
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_GLOBAL, STT_NOTYPE), text_section->index);
+                csym->st_value = label_iter->second->offset;
+            }
+            else if(label_iter->second->_section == section::_data){
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_GLOBAL, STT_NOTYPE), data_section->index);
+                csym->st_value = label_iter->second->offset;
+            }
+        }
+
+        if (label_iter->second->visibility != local_label){
+            symtab_section->section->sh_info =  ELF32_ST_INFO(STB_LOCAL,symtab_idx);
+            set_symtab_loc_idx = true;
+        }
+
+        symtab_idx++;
+        label_iter++;
+    }
+    if (!set_symtab_loc_idx){
+        symtab_section->section->sh_info =  ELF32_ST_INFO(STB_LOCAL,symtab_idx);
+    }
+
+
+    shstrtab->add_strtab(shstrtab_section);
+    shstrtab_section->section->sh_name = shstrtab->get_string(".shstrtab");
+
+
+    strtab->add_strtab(strtab_section);
+    strtab_section->section->sh_name = shstrtab->get_string(".strtab");
+
+
+    symbol_table->add_symtab(symtab_section);
+
+
+    //rel_tab->new_relocation(1, ELF32_R_INFO(4, R_386_32));
+
+    rel_tab->add_reltab(rel_text_section);
+
+    rel_text_section->section->sh_name = shstrtab->get_string(".rel.text");
+    rel_text_section->section->sh_link = symtab_section->index;
+    rel_text_section->section->sh_info = text_section->index;
+
+
+    elf->write(name);
+
+    elf->done();
+
+    delete elf;
+    delete symbol_table;
+    delete shstrtab;
+    delete strtab;
+    free(_data_data);
+
+}
+
+
+
+void x86_32_Encoder::gen_bin(std::string name){
+    if (_format == format::elf32){
+        gen_elf32(name);
+    }
+    else{
+        std::cout << "x86_32 encoder does not support that format\n";
+        return;
+    }
+}
