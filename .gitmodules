@@ -1,0 +1,3 @@
+[submodule "seegul"]
+	path = seegul
+	url = https://github.com/nash-project/seegul.git
