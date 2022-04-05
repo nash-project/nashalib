@@ -17,6 +17,3 @@ jobs:
       run: git submodule update --init --recursive
     - name: make
       run: make
-  
-      run: git submodule update --init --recursive
-      
