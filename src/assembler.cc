@@ -1,9 +1,10 @@
-#include <assembler.hpp>
+#include <nashalib/assembler.hpp>
 #include <stdio.h>
+#include <cstdarg>
+#include <iostream>
 
 
-
-namespace assembler{
+namespace nashalib{
 	Assembler::Assembler(architecture arch, int bsz, format f){
 
 		ofile = fopen("temp.out", "wb");
@@ -15,24 +16,17 @@ namespace assembler{
 	void Assembler::encode(struct inst* instruction){
 		encoder->encode(instruction);
 	}
-	struct inst * Assembler::mInstruction(mnemonic mnemonic_, struct inst_operand* op0, 
-										struct inst_operand *op1 , struct inst_operand* op2){
+	struct inst * Assembler::mInstruction(mnemonic mnemonic_, operand_list& operands){
 
 		struct inst * instruction = (struct inst*)calloc(1, sizeof(struct inst));
+
 		instruction->mnemonic = mnemonic_;
 
-		if (op0 != NULL){
-			new_operand(instruction, op0);
+		for (auto operand: operands){
+			new_operand(instruction, operand);
+		
 		}
-
-		if (op1 != NULL){
-			new_operand(instruction, op1);
-		}
-
-		if (op2 != NULL){
-			new_operand(instruction, op2);
-		}
-
+		//instructions.push_back(instruction);
 		return instruction;
 	}
 	void Assembler::freeInstruction(struct inst* instruction){
@@ -43,23 +37,27 @@ namespace assembler{
 	}
 
 	int Assembler::label_as_relative(std::string label){
-		return (encoder->get_cpos() - encoder->get_label(label));
+		return (encoder->_get_cpos() - encoder->_get_label(label));
 	}
 	int Assembler::get_label(std::string label){
-		return encoder->get_label(label);
+		return encoder->_get_label(label);
 	}
 
 	void Assembler::add_label(std::string label, int vis){
-		encoder->add_label(label, vis, section::_text);
+		encoder->_add_label(label, vis, section::_text);
 	}
 
 	void Assembler::write(std::string name){
+		encoder->_resolve_labels();
 		fclose(ofile);
 		encoder->gen_bin(name);
+		
 	}
-
 	void Assembler::new_data(Data* data){
-		encoder->add_label(data->label, data->vis, section::_data);
-		encoder->add_data(data);
+		encoder->_add_label(data->label, data->vis, section::_data);
+		encoder->_add_data(data);
+	}
+	Label * Assembler::get_label_obj(std::string label){
+		return encoder->_get_label_obj(label);
 	}
 };

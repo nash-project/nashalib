@@ -1,5 +1,6 @@
-#include <registers.hpp>
+#include <nashalib/registers.hpp>
 
+namespace nashalib{
 
 /**
  * all registers supported by x86 32 bit assembly
@@ -58,3 +59,6 @@ struct register_info registers_table[] = {
     { 0x06, 16, true},
     { 0x07, 16, true},
 };
+
+
+}

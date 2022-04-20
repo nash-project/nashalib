@@ -1,5 +1,5 @@
 #pragma once
-
+namespace nashalib{
 
 /**
  * all supported mnemonics
@@ -9,6 +9,10 @@ enum class mnemonic {
     ADD = 0,
     MOV,
     PUSH,
-    POP
-
+    POP,
+    RETN,
+    CALL,
+    INT,
 };
+
+}

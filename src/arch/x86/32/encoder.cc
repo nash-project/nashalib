@@ -2,16 +2,16 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <arch/x86/32/encoder.hpp>
-#include <registers.hpp>
-#include <arch/x86/32/opcodes.hpp>
-#include <endianess.hpp>
+#include <nashalib/arch/x86/32/encoder.hpp>
+#include <nashalib/registers.hpp>
+#include <nashalib/arch/x86/32/opcodes.hpp>
+#include <nashalib/endianess.hpp>
 #include <seegul/seegul.h>
 #include <fstream>
 #include <iostream>
-#include <settings.hpp>
+#include <nashalib/settings.hpp>
 
-
+namespace nashalib{
 
 struct modrm{
     unsigned char rm: 3;
@@ -35,12 +35,24 @@ static int find_opcode(struct inst* inst_){
         if (opcode_table[i].Noperands != inst_->operands.size()){
             continue;
         }
+        if (opcode_table[i].Noperands == 0 && inst_->operands.size() == 0){
+            return i;
+        }
         for (int ii = 0; ii < inst_->operands.size(); ii++){
-            if ( (inst_->operands[ii]->size == opcode_table[i].operands[ii].size) &&
+            if (
+                    (inst_->operands[ii]->size == 32) && 
+                    (inst_->operands[ii]->type == INST_OPERAND_TYPE_LABEL && 
+                    (opcode_table[i].operands[ii].type == INST_OPERAND_TYPE_IMM))
+                )
+            {
+                all_operands_valid = true;
+            }
+
+            else if ( (inst_->operands[ii]->size == opcode_table[i].operands[ii].size) &&
                     (inst_->operands[ii]->type == opcode_table[i].operands[ii].type)){
 
                 if ( (opcode_table[i].operands[ii].use_literal_value)) { 
-                    if (opcode_table[i].operands[ii].value == inst_->operands[ii]->value){
+                    if (opcode_table[i].operands[ii].value == inst_->operands[ii]->val.value){
                         all_operands_valid = true;
                     }
                     else{
@@ -70,20 +82,22 @@ static inline void set_mod_in_modrm(struct modrm *modrm_, unsigned char mod){
     modrm_->mod = mod;
 }
 
-static inline void add_reg_2_modrm(int opcode_index, struct inst_operand* operand, struct modrm* _modrm, struct imm *imm){
+static inline bool add_reg_2_modrm(int opcode_index, struct inst_operand* operand, struct modrm* _modrm, struct imm *imm){
     switch (operand->type){
         case INST_OPERAND_TYPE_REG:
-            _modrm->reg = registers_table[operand->value].reg;        
+            _modrm->reg = registers_table[operand->val.value].reg; 
+            return false;       
             break;
         case INST_OPERAND_TYPE_IMM:
             
-            imm->imm = operand->value;
+            imm->imm = operand->val.value;
             imm->needs_imm = true;
             imm->size = operand->size;
 
             if (opcode_table[opcode_index].rm_extends_opcode){
                 _modrm->rm = opcode_table[opcode_index].rm;
             }
+            return false;
             break;
         default:
             break;
@@ -102,7 +116,7 @@ static inline bool add_rm_2_modrm(int opcode_index, struct modrm * _modrm, struc
             break;
         case INST_OPERAND_TYPE_IMM:
 
-            imm->imm = operand->value;
+            imm->imm = operand->val.value;
             imm->needs_imm = true;
             imm->size = operand->size;
             _modrm->mod = 0b11;
@@ -114,12 +128,12 @@ static inline bool add_rm_2_modrm(int opcode_index, struct modrm * _modrm, struc
             break;
         case INST_OPERAND_TYPE_REG:
             _modrm->mod = 0b11;
-            _modrm->rm = registers_table[operand->value].reg;
+            _modrm->rm = registers_table[operand->val.value].reg;
             return true;
             break;
         case INST_OPERAND_TYPE_MEM:
             _modrm->mod = 0b00;
-            _modrm->rm = registers_table[operand->value].reg;
+            _modrm->rm = registers_table[operand->val.value].reg;
             return true;
             break;
         default:
@@ -129,7 +143,7 @@ static inline bool add_rm_2_modrm(int opcode_index, struct modrm * _modrm, struc
 }
 
 
-void x86_32_Encoder::encode(struct inst* inst_){
+void x86_32_Encoder::encode(struct nashalib::inst* inst_){
     unsigned char opcode;
 
     struct modrm modrm_  = {0};
@@ -140,6 +154,9 @@ void x86_32_Encoder::encode(struct inst* inst_){
     bool needs_sib = false;
     unsigned char sib_byte;
 
+    std::string c_label;
+    bool label_relative = false;
+    bool label = false;
 
     struct imm imm = {0};
 
@@ -168,6 +185,7 @@ void x86_32_Encoder::encode(struct inst* inst_){
 
                 set_rm_in_modrm(&modrm_,0b100);
 
+
                 if (registers_table[(int)inst_->operands[i]->sib_info.base->reg].reg == 0b101){
                     imm.imm = 0x0;
                     imm.size = 8;
@@ -178,8 +196,7 @@ void x86_32_Encoder::encode(struct inst* inst_){
                     set_mod_in_modrm(&modrm_, 0b00);
                 }
 
-                //printf("%d: reg: %d\n", i, (int)inst_->operands[i].value);
-                inst_->operands[i]->sib_info.sib_byte.base = registers_table[(int)inst_->operands[i]->sib_info.base->value].reg; 
+                inst_->operands[i]->sib_info.sib_byte.base = registers_table[(int)inst_->operands[i]->sib_info.base->val.value].reg; 
 
                 sib_byte = *(unsigned char*)&inst_->operands[i]->sib_info.sib_byte;
                 
@@ -188,25 +205,23 @@ void x86_32_Encoder::encode(struct inst* inst_){
             }
             else if(inst_->operands[i]->sib_info.base->type == INST_OPERAND_TYPE_IMM){
                 needs_sib = true;
-                
 
                 set_rm_in_modrm(&modrm_,0b100);
 
                 inst_->operands[i]->sib_info.sib_byte.base = 0b101;
 
+
+                imm.needs_imm = true;
+                imm.imm = inst_->operands[i]->sib_info.base->val.value;
+
                 switch (inst_->operands[i]->sib_info.base->size){
                     case 32:{
-                        imm.imm = inst_->operands[i]->sib_info.base->value;
                         imm.size = 32;
-                        imm.needs_imm = true;
                         set_mod_in_modrm(&modrm_, 0b00);
                         break;
                     }
-
-                    case 8:{
-                        imm.imm = inst_->operands[i]->sib_info.base->value;
+                    case 8:{  
                         imm.size = 8;
-                        imm.needs_imm = true;
                         set_mod_in_modrm(&modrm_, 0b01);
                         break;
                     }
@@ -223,30 +238,42 @@ void x86_32_Encoder::encode(struct inst* inst_){
             }
 
         }
+        else if (inst_->operands[i]->type == INST_OPERAND_TYPE_LABEL){
+            c_label = inst_->operands[i]->val.label;
+            int lt = opcode_table[opcode_index].operands[i].label_type;
+
+            if (lt == RELATIVE){
+                label_relative = true;
+            }
+            
+            label = true;
+            imm.needs_imm = true;
+        }
         else{
             if (opcode_table[opcode_index].which_does_rm_field_point_to == 0){
                 if (modrm_index == 0) {
-                    if (skip_rm){
+                    if (!skip_rm){
                         if (add_rm_2_modrm(opcode_index, &modrm_, inst_->operands[i], &imm))
                             modrm_index++;
                     }
                 }
                 else if (modrm_index == 1){
-                    add_reg_2_modrm(opcode_index, inst_->operands[i], &modrm_, &imm);
-                    modrm_index++;
-                }   
+                    if (add_reg_2_modrm(opcode_index, inst_->operands[i], &modrm_, &imm))
+                        modrm_index++;
+                }
             }
             else{
 
                 if (modrm_index == 1){
-                    if (skip_rm){
+                    if (!skip_rm){
                         if (add_rm_2_modrm(opcode_index, &modrm_, inst_->operands[i], &imm))
                             modrm_index++;
                     }
                 }
                 else if (modrm_index == 0){
-                    add_reg_2_modrm(opcode_index, inst_->operands[i], &modrm_, &imm);
+                    if (add_reg_2_modrm(opcode_index, inst_->operands[i], &modrm_, &imm))
                         modrm_index++;
+                    
                 }
             }
         }
@@ -257,7 +284,7 @@ void x86_32_Encoder::encode(struct inst* inst_){
 
     modrm_byte = *(unsigned char*)&modrm_;
 
-    if (modrm_index != 0){
+    if (modrm_index != 0 && opcode_table[opcode_index].needs_modrm){
         add_byte(modrm_byte);
     }
 
@@ -265,8 +292,14 @@ void x86_32_Encoder::encode(struct inst* inst_){
         add_byte(sib_byte);
     }
 
+    
     if (imm.needs_imm){
-        add_imm(imm.imm, imm.size, ENDIANESS__BIG_ENDIAN__);
+        if (label){
+            add_label(c_label, label_relative);
+        }
+        else{
+            add_imm(imm.imm, imm.size, ENDIANESS__BIG_ENDIAN__); 
+        }
     }
 }
 
@@ -346,20 +379,14 @@ void x86_32_Encoder::gen_elf32(std::string name){
     
 // .symtab
 
-    bool set_symtab_loc_idx = false;
-    int symtab_idx = 0;
-
     symtab_section->section->sh_name = shstrtab->get_string(".symtab");
     symtab_section->section->sh_link = strtab_section->index;
 
-    symbol_table->new_symbol(0, 0, SHN_UNDEF);
-    symtab_idx++;
+    symbol_table->new_symbol(0, 0 ,0, SHN_UNDEF);
 
-    symbol_table->new_symbol(strtab->get_string("temp.nash"), ELF32_ST_INFO(STB_LOCAL, STT_FILE), SHN_ABS);
-    symtab_idx++;
+    symbol_table->new_symbol(strtab->get_string("temp.nash"), STB_LOCAL, STT_FILE, SHN_ABS);
     
-    symbol_table->new_symbol(0, ELF32_ST_INFO(STB_LOCAL, STT_SECTION), text_section->index);
-    symtab_idx++;
+    symbol_table->new_symbol(0, STB_LOCAL, STT_SECTION, text_section->index);
 
     auto label_iter = labels.begin();
     while (label_iter != labels.end()) {
@@ -368,36 +395,30 @@ void x86_32_Encoder::gen_elf32(std::string name){
 
         if (label_iter->second->visibility == local_label){
             if (label_iter->second->_section == section::_text){
-                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_LOCAL, STT_NOTYPE), text_section->index);
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), STB_LOCAL, STT_NOTYPE, text_section->index);
                 csym->st_value = label_iter->second->offset;
             }
             else if(label_iter->second->_section == section::_data){
-                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_LOCAL, STT_NOTYPE), data_section->index);
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), STB_LOCAL, STT_NOTYPE, data_section->index);
                 csym->st_value = label_iter->second->offset;
             }
         }
         else{
             if (label_iter->second->_section == section::_text){
-                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_GLOBAL, STT_NOTYPE), text_section->index);
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), STB_GLOBAL, STT_NOTYPE, text_section->index);
                 csym->st_value = label_iter->second->offset;
             }
             else if(label_iter->second->_section == section::_data){
-                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), ELF32_ST_INFO(STB_GLOBAL, STT_NOTYPE), data_section->index);
+                csym = symbol_table->new_symbol(strtab->get_string(label_iter->first), STB_GLOBAL, STT_NOTYPE, data_section->index);
                 csym->st_value = label_iter->second->offset;
             }
         }
 
-        if (label_iter->second->visibility != local_label){
-            symtab_section->section->sh_info =  ELF32_ST_INFO(STB_LOCAL,symtab_idx);
-            set_symtab_loc_idx = true;
-        }
-
-        symtab_idx++;
         label_iter++;
     }
-    if (!set_symtab_loc_idx){
-        symtab_section->section->sh_info =  ELF32_ST_INFO(STB_LOCAL,symtab_idx);
-    }
+
+
+
 
 
     shstrtab->add_strtab(shstrtab_section);
@@ -411,7 +432,15 @@ void x86_32_Encoder::gen_elf32(std::string name){
     symbol_table->add_symtab(symtab_section);
 
 
-    //rel_tab->new_relocation(1, ELF32_R_INFO(4, R_386_32));
+
+    for (auto entry : reloctable_table){
+        if (entry->section == section::_data){
+            rel_tab->new_relocation(entry->offset, ELF32_R_INFO(symtab_section->index, R_386_32));
+        }
+        else{
+            // we don't need relocation if its in text
+        }
+    }
 
     rel_tab->add_reltab(rel_text_section);
 
@@ -442,4 +471,7 @@ void x86_32_Encoder::gen_bin(std::string name){
         std::cout << "x86_32 encoder does not support that format\n";
         return;
     }
+}
+
+
 }

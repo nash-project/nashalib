@@ -1,6 +1,7 @@
 #pragma once
-#include <settings.hpp>
-
+#include <nashalib/settings.hpp>
+#include <string>
+namespace nashalib{
 
 class Label{
 public:
@@ -11,3 +12,11 @@ public:
 	int visibility;
 	section _section;
 };
+
+struct label_map_entry{
+	int pos;
+	char* label;
+	bool relative;
+};
+
+}

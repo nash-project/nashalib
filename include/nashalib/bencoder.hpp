@@ -1,14 +1,16 @@
 #pragma once
 #include <vector>
 #include <map>
-#include <instruction.hpp>
+#include <nashalib/instruction.hpp>
 #include <string>
-#include <endianess.hpp>
+#include <nashalib/endianess.hpp>
 #include <stdio.h>
-#include <settings.hpp>
-#include <label.hpp>
-#include <Data.hpp>
+#include <nashalib/settings.hpp>
+#include <nashalib/label.hpp>
+#include <nashalib/Data.hpp>
+#include <nashalib/relocation_entry.hpp>
 
+namespace nashalib{
 
 class BEncoder { // Base assembler extraction
 public:
@@ -27,19 +29,27 @@ public:
 	void add_int(int, int);
 	void add_short(int, int);
 	void add_imm(int,int, int);
+	void add_label(std::string, bool relative = false);
+
+
+	Label* _add_label(std::string, int, section);
+	void _add_data(Data*);
+	int _get_cpos();
+	int _get_label(std::string);
+	Label* _get_label_obj(std::string);
+	int _get_data_cpos();
+	void _resolve_labels();
 	
-	void add_label(std::string, int, section);
-	void add_data(Data*);
-	
-	int get_cpos();
-	int get_label(std::string);
-	int get_data_cpos();
 
 protected:
 	int cpos;
 	FILE* ofile;
 	std::map<std::string, Label*> labels;
 	std::vector<Data*> data;
+	std::vector<relocation_entry*> reloctable_table;
 	int data_cpos = 0;
 	format _format;
+	std::vector<struct label_map_entry*> referenced_labels_map;
 };
+
+}

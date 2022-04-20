@@ -1,18 +1,19 @@
-#include <instruction.hpp>
+#include <nashalib/instruction.hpp>
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
 
+namespace nashalib{
 
 
-extern "C" void new_operand(struct inst *i, struct inst_operand *operand){
+void new_operand(struct inst *i, struct inst_operand *operand){
 	i->operands.push_back(operand);
 }
 
-extern "C" struct inst_operand* create_reg(enum registers reg){
+struct inst_operand* create_reg(enum registers reg){
 
 	struct inst_operand * op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
-	op->value = (int)reg;
+	op->val.value = (int)reg;
     op->size = registers_table[(int)reg].size;
 
 	if (registers_table[(int)reg].is_segment){
@@ -25,32 +26,32 @@ extern "C" struct inst_operand* create_reg(enum registers reg){
 	return op;
 }
 
-extern "C" struct inst_operand* create_mem(int mem){
+struct inst_operand* create_mem(int mem){
 	struct inst_operand * op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
-	op->value = mem;
+	op->val.value = mem;
 	op->type = INST_OPERAND_TYPE_MEM;
     op->reg = false;
 	return op;
 }
 
-extern "C" struct inst_operand* create_mem_reg(enum registers reg){
+struct inst_operand* create_mem_reg(enum registers reg){
     struct inst_operand* op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
-    op->value = (int)reg;
+    op->val.value = (int)reg;
     op->type = INST_OPERAND_TYPE_MEM;
     op->reg = true;
     op->size = registers_table[(int)reg].size;
     return op;
 }
 
-extern "C" struct inst_operand* create_imm(int imm, int size){
+struct inst_operand* create_imm(int imm, int size){
 	struct inst_operand * op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
-	op->value = imm;
+	op->val.value = imm;
 	op->type = INST_OPERAND_TYPE_IMM;
     op->size = size;
 	return op;
 }
-extern "C" void free_instruction(struct inst* inst_){
-	for (int x = 0; x < inst_->operands.size(); x++){
+void free_instruction(struct inst* inst_){
+	for (int x = 0; x < (int)inst_->operands.size(); x++){
 
 		if (inst_->operands[x]->type == INST_OPERAND_TYPE_SCALE){
 
@@ -63,13 +64,14 @@ extern "C" void free_instruction(struct inst* inst_){
     free(inst_);
 }
 
-extern "C" struct inst_operand* create_scale_reg(struct inst_operand* base, registers index, unsigned char scale){
+struct inst_operand* create_scale_reg(struct inst_operand* base, registers index, unsigned char scale){
 
 	struct inst_operand *op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
 	op->type = INST_OPERAND_TYPE_SCALE;
 	op->size = registers_table[(int)index].size;
 	op->sib_info.base = base;
 	op->sib_info.sib_byte.index = registers_table[(int)index].reg;
+	op->val.value = -1;
 
 	switch (scale){
 		case 1:
@@ -88,24 +90,15 @@ extern "C" struct inst_operand* create_scale_reg(struct inst_operand* base, regi
 			return NULL;
 			break;
 	}
-
-
-
-
-	/*
-	switch (base->type){
-		case INST_OPERAND_TYPE_REG:
-			sb.base = registers_table[(int)base->value].reg;
-			break;
-		case INST_OPERAND_TYPE_IMM:
-			//sb.base
-			// TODO: IMPLEMENT
-			return NULL;
-			break;
-		default:
-			return NULL;
-			break;
-	}
-	op->sib_byte = *(unsigned char*)&sb;*/
 	return op;
+}
+
+struct inst_operand * create_label(std::string label){
+	struct inst_operand * op = (struct inst_operand*)malloc(sizeof(struct inst_operand));
+	op->val.label = label;
+	op->type = INST_OPERAND_TYPE_LABEL;
+    op->size = 32; // we just assume its 32 bit because we only support x86_32 atm
+	return op;
+}
+
 }

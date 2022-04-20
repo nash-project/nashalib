@@ -1,5 +1,7 @@
 #pragma once
 
+namespace nashalib{
+
 /**
  * All supported registers by the assembler
  */
@@ -68,3 +70,6 @@ struct register_info{
 
 
 extern "C" struct register_info registers_table[];
+
+
+}

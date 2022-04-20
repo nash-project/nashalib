@@ -1,9 +1,11 @@
 #pragma once
-#include <instruction.hpp>
-#include <registers.hpp>
+#include <nashalib/instruction.hpp>
+#include <nashalib/registers.hpp>
 #include <stdio.h>
-#include <bencoder.hpp>
-#include <settings.hpp>
+#include <nashalib/bencoder.hpp>
+#include <nashalib/settings.hpp>
+
+namespace nashalib{
 
 class x86_32_Encoder : public BEncoder {
 public:
@@ -13,3 +15,6 @@ public:
 private:
    void gen_elf32(std::string);
 };
+
+
+}
